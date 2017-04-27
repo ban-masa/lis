@@ -21,6 +21,10 @@ parser.add_argument('--gpu', '-g', default=-1, type=int,
                     help='GPU ID (negative value indicates CPU)')
 parser.add_argument('--log-file', '-l', default='reward.log', type=str,
                     help='reward log file name')
+parser.add_argument('--load-model', default=None, type=str,
+                    help='file name to load model')
+parser.add_argument('--save-model', default=None, type=str,
+                    help='file name to save model')
 args = parser.parse_args()
 
 
@@ -38,6 +42,7 @@ class Root(object):
 class AgentServer(WebSocket):
     agent = CnnDqnAgent()
     agent_initialized = False
+    agent_initialize_finished = False
     cycle_counter = 0
     thread_event = threading.Event()
     log_file = args.log_file
@@ -70,12 +75,14 @@ class AgentServer(WebSocket):
             print ("initializing agent...")
             self.agent.agent_init(
                 use_gpu=args.gpu,
-                depth_image_dim=self.depth_image_dim * self.depth_image_count)
+                depth_image_dim=self.depth_image_dim * self.depth_image_count,
+                load_model_name=args.load_model)
 
             action = self.agent.agent_start(observation)
             self.send_action(action)
             with open(self.log_file, 'w') as the_file:
                 the_file.write('cycle, episode_reward_sum \n')
+            self.agent_initialize_finished = True
         else:
             self.thread_event.wait()
             self.cycle_counter += 1
@@ -94,7 +101,16 @@ class AgentServer(WebSocket):
                 self.send_action(action)
                 self.agent.agent_step_update(reward, action, eps, q_now, obs_array)
 
+            if self.cycle_counter % 1000 == 0:
+                self.agent.q_net.save_target_model(args.save_model)
+
         self.thread_event.set()
+
+    def closed(self, code, reason):
+        if self.agent_initialize_finished:
+            print ("Closed")
+            self.agent.q_net.save_target_model(args.save_model)
+
 
 cherrypy.config.update({'server.socket_host': args.ip,
                         'server.socket_port': args.port})

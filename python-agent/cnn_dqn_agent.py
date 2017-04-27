@@ -44,6 +44,7 @@ class CnnDqnAgent(object):
         self.use_gpu = options['use_gpu']
         self.depth_image_dim = options['depth_image_dim']
         self.q_net_input_dim = self.image_feature_dim * self.image_feature_count + self.depth_image_dim
+        self.load_model_name = options['load_model_name']
 
         if os.path.exists(self.cnn_feature_extractor):
             print("loading... " + self.cnn_feature_extractor),
@@ -56,7 +57,7 @@ class CnnDqnAgent(object):
 
         self.time = 0
         self.epsilon = 1.0  # Initial exploratoin rate
-        self.q_net = QNet(self.use_gpu, self.actions, self.q_net_input_dim)
+        self.q_net = QNet(self.use_gpu, self.actions, self.q_net_input_dim, self.load_model_name)
 
     def agent_start(self, observation):
         obs_array = self._observation_to_featurevec(observation)
@@ -162,3 +163,8 @@ class CnnDqnAgent(object):
         # Time count
         if self.policy_frozen is False:
             self.time += 1
+
+    def save_target_model(self, filename):
+        self.q_net.save_target_model(filename)
+    def save_model(self, filename):
+        self.q_net.save_target_model(filename)

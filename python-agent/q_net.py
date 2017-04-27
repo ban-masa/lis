@@ -3,6 +3,7 @@
 import copy
 import numpy as np
 from chainer import cuda, FunctionSet, Variable, optimizers
+from chainer import serializers
 import chainer.functions as F
 
 
@@ -15,7 +16,7 @@ class QNet:
     data_size = 10**5  # Data size of history. original: 10^6
     hist_size = 1 #original: 4
 
-    def __init__(self, use_gpu, enable_controller, dim):
+    def __init__(self, use_gpu, enable_controller, dim, load_model_name):
         self.use_gpu = use_gpu
         self.num_of_actions = len(enable_controller)
         self.enable_controller = enable_controller
@@ -30,6 +31,10 @@ class QNet:
                              initialW=np.zeros((self.num_of_actions, hidden_dim),
                                                dtype=np.float32))
         )
+
+        if load_model_name:
+            serializers.load_npz(load_model_name, self.model)
+
         if self.use_gpu >= 0:
             self.model.to_gpu()
 
@@ -169,3 +174,24 @@ class QNet:
 
     def action_to_index(self, action):
         return self.enable_controller.index(action)
+    
+    def save_target_model(self, filename):
+        if not filename:
+            return
+        print ("Saving the target_model to " + filename)
+        tmp_model = copy.deepcopy(self.model_target)
+        if self.use_gpu >= 0:
+            tmp_model.to_cpu()
+        serializers.save_npz(filename, tmp_model)
+        print ("Finished saving the model to " + filename)
+
+    def save_model(self, filename):
+        if not filename:
+            return
+        print ("Saving the model to " + filename)
+        tmp_model = copy.deepcopy(self.model)
+        if self.use_gpu >= 0:
+            tmp_model.to_cpu()
+        serializers.save_npz(filename, tmp_model)
+        print ("Finished saving the model to " + filename)
+
