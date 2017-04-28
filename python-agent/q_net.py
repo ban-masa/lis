@@ -34,6 +34,7 @@ class QNet:
 
         if load_model_name:
             serializers.load_npz(load_model_name, self.model)
+            self.initial_exploration = 0
 
         if self.use_gpu >= 0:
             self.model.to_gpu()
